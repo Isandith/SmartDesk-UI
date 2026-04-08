@@ -22,6 +22,7 @@ export class AppComponent {
   private static readonly PriorityToken = '[PRIORITY]';
   private static readonly ContentToken = '[CONTENT]';
   private static readonly BreakToken = '[BREAK]';
+  private static readonly PopupSymbols = ['ℹ️', '⚠️', '🚨', '❗', '✅'];
 
   private chatService = inject(ChatService);
 
@@ -139,6 +140,11 @@ export class AppComponent {
             return session;
           }),
         );
+
+        if (parsed.popupNotice) {
+          this.showWarningToast(parsed.popupNotice);
+        }
+
         this.isLoading.set(false);
       },
       error: (error: unknown) => {
@@ -238,7 +244,7 @@ export class AppComponent {
     return `sess_${Math.random().toString(36).substring(2, 9)}`;
   }
 
-  private parseResponseAnswer(answer: string): { content: string; priority: string; warning: string } {
+  private parseResponseAnswer(answer: string): { content: string; priority: string; warning: string; popupNotice: string } {
     const normalizeBreaks = (value: string) => value.replaceAll(AppComponent.BreakToken, '\n\n').trim();
     const normalizedAnswer = answer ?? '';
 
@@ -247,6 +253,7 @@ export class AppComponent {
         content: normalizeBreaks(normalizedAnswer),
         priority: '',
         warning: '',
+        popupNotice: '',
       };
     }
 
@@ -282,10 +289,43 @@ export class AppComponent {
     const priority = priorityParts.filter(Boolean).join('\n\n').trim();
     const warning = warningParts.filter(Boolean).join('\n\n').trim();
 
+    const contentNotice = this.extractPopupNotice(content);
+    const warningNotice = this.extractPopupNotice(warning);
+
     return {
-      content,
+      content: contentNotice.cleaned,
       priority,
-      warning,
+      warning: warningNotice.cleaned,
+      popupNotice: contentNotice.notice || warningNotice.notice,
+    };
+  }
+
+  private extractPopupNotice(value: string): { cleaned: string; notice: string } {
+    if (!value) {
+      return { cleaned: value, notice: '' };
+    }
+
+    const lines = value.split('\n');
+    const keptLines: string[] = [];
+    let notice = '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      const isSymbolNotice = AppComponent.PopupSymbols.some((symbol) => trimmed.startsWith(symbol));
+
+      if (isSymbolNotice) {
+        if (!notice) {
+          notice = trimmed;
+        }
+        continue;
+      }
+
+      keptLines.push(line);
+    }
+
+    return {
+      cleaned: keptLines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+      notice,
     };
   }
 

@@ -18,6 +18,22 @@ export class ChatMessagesComponent implements AfterViewChecked {
     this.scrollToBottom();
   }
 
+  hasSentiment(message: ChatMessage): boolean {
+    return typeof message.metadata?.sentiment_score === 'number' && Number.isFinite(message.metadata.sentiment_score);
+  }
+
+  getSentimentClass(score: number): string {
+    if (score >= 0.35) {
+      return 'sentiment-positive';
+    }
+
+    if (score <= -0.35) {
+      return 'sentiment-negative';
+    }
+
+    return 'sentiment-neutral';
+  }
+
   private scrollToBottom(): void {
     try {
       const element = this.chatContainer.nativeElement;

@@ -548,6 +548,44 @@ app-root {
   font-weight: 700;
 }
 
+.sentiment-chip {
+  margin-top: 0.68rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.34rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.sentiment-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.sentiment-neutral {
+  color: #395a8d;
+  border-color: rgba(57, 90, 141, 0.23);
+  background: rgba(57, 90, 141, 0.1);
+}
+
+.sentiment-positive {
+  color: #1a8b63;
+  border-color: rgba(26, 139, 99, 0.24);
+  background: rgba(26, 139, 99, 0.11);
+}
+
+.sentiment-negative {
+  color: #b44763;
+  border-color: rgba(180, 71, 99, 0.24);
+  background: rgba(180, 71, 99, 0.1);
+}
+
 .message-meta {
   margin-top: 0.5rem;
   display: flex;
