@@ -520,18 +520,26 @@ app-root {
   white-space: pre-wrap;
 }
 
-.escalation-banner {
+.priority-block {
   margin-top: 0.68rem;
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.58rem;
-  border-radius: 0.48rem;
-  border: 1px solid rgba(199, 79, 106, 0.28);
-  background: rgba(199, 79, 106, 0.08);
-  color: #af3e58;
-  font-size: 0.74rem;
+  padding-left: 0.7rem;
+  border-left: 2px solid rgba(47, 79, 127, 0.16);
+}
+
+.priority-title,
+.priority-line {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.58;
+  color: inherit;
+}
+
+.priority-title {
   font-weight: 700;
+}
+
+.priority-line {
+  margin-top: 0.12rem;
 }
 
 .warning-banner {
@@ -559,6 +567,38 @@ app-root {
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.01em;
+}
+
+.assistant-metadata {
+  margin-top: 0.68rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.assistant-metadata .sentiment-chip {
+  margin-top: 0;
+}
+
+.status-chip,
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.34rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(57, 90, 141, 0.23);
+  background: rgba(57, 90, 141, 0.08);
+  color: #395a8d;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.source-chip {
+  border-color: rgba(23, 62, 110, 0.2);
+  background: rgba(23, 62, 110, 0.07);
+  color: #2f4f7f;
 }
 
 .sentiment-dot {
