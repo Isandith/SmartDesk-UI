@@ -5,6 +5,11 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
   standalone: true,
   templateUrl: './chat-header.component.html',
 })
+/**
+ * <summary>
+ * Renders the chat title and emits requests to reset the current conversation.
+ * </summary>
+ */
 export class ChatHeaderComponent {
   @Input() title = '';
 

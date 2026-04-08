@@ -16,6 +16,11 @@ import { ChatService } from './lib/services/chat.service';
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
+/**
+ * <summary>
+ * Coordinates chat sessions, message flow, persistence, and UI warnings.
+ * </summary>
+ */
 export class AppComponent {
   private static readonly MarkerDelimiter = '!$!@$!$!';
   private static readonly WarningToken = '[WARNING]';
@@ -41,6 +46,11 @@ export class AppComponent {
   private hasShownStatusPopup = false;
   private hasShownManualModeWarning = false;
 
+  /**
+   * <summary>
+   * Initializes autosave behavior for session state persistence.
+   * </summary>
+   */
   constructor() {
     // Auto-save sessions to localStorage whenever they change
     effect(() => {
@@ -48,6 +58,11 @@ export class AppComponent {
     });
   }
 
+  /**
+   * <summary>
+   * Creates a new empty session or reuses an existing empty one.
+   * </summary>
+   */
   createNewSession() {
     if (this.isLoading()) {
       return;
@@ -77,6 +92,12 @@ export class AppComponent {
     this.messageControl.setValue('');
   }
 
+  /**
+   * <summary>
+   * Switches the active session and prunes an abandoned empty session.
+   * </summary>
+   * <param name="sessionId">Identifier of the session to activate.</param>
+   */
   setActiveSession(sessionId: string) {
     const currentSessionId = this.activeSessionId();
     const currentSession = this.sessions().find((session) => session.id === currentSessionId);
@@ -90,6 +111,11 @@ export class AppComponent {
     this.hasShownManualModeWarning = false;
   }
 
+  /**
+   * <summary>
+   * Sends the current user message and appends the assistant response.
+   * </summary>
+   */
   sendMessage() {
     const text = this.messageControl.value.trim();
     if (!text || this.isLoading()) {
@@ -174,6 +200,11 @@ export class AppComponent {
     });
   }
 
+  /**
+   * <summary>
+   * Clears the active session on both backend and UI.
+   * </summary>
+   */
   resetCurrentSession() {
     if (this.isLoading()) {
       return;
@@ -211,6 +242,12 @@ export class AppComponent {
     });
   }
 
+  /**
+   * <summary>
+   * Deletes a session and removes it locally even if backend cleanup fails.
+   * </summary>
+   * <param name="sessionId">Identifier of the session to delete.</param>
+   */
   deleteSession(sessionId: string) {
     if (this.isLoading()) {
       return;
@@ -229,6 +266,12 @@ export class AppComponent {
     });
   }
 
+  /**
+   * <summary>
+   * Removes a session from local state and ensures a valid active session exists.
+   * </summary>
+   * <param name="sessionId">Identifier of the session to remove from UI.</param>
+   */
   private removeSessionFromUi(sessionId: string) {
     const remainingSessions = this.sessions().filter((session) => session.id !== sessionId);
 
@@ -258,10 +301,23 @@ export class AppComponent {
     }
   }
 
+  /**
+   * <summary>
+   * Generates a client session identifier.
+   * </summary>
+   * <returns>New pseudo-random session id.</returns>
+   */
   private generateSessionId(): string {
     return `sess_${Math.random().toString(36).substring(2, 9)}`;
   }
 
+  /**
+   * <summary>
+   * Parses a backend answer payload into content, warning, priority, and popup fields.
+   * </summary>
+   * <param name="answer">Raw backend answer string.</param>
+   * <returns>Parsed message segments and quota-notice metadata.</returns>
+   */
   private parseResponseAnswer(answer: string): {
     content: string;
     priority: string;
@@ -337,6 +393,13 @@ export class AppComponent {
     };
   }
 
+  /**
+   * <summary>
+   * Extracts symbol-based quota notices and returns cleaned text.
+   * </summary>
+   * <param name="value">Text to inspect.</param>
+   * <returns>Cleaned text, extracted notice, and removal flag.</returns>
+   */
   private extractQuotaPopupNotice(value: string): { cleaned: string; notice: string; removed: boolean } {
     if (!value) {
       return { cleaned: value, notice: '', removed: false };
@@ -370,6 +433,13 @@ export class AppComponent {
     };
   }
 
+  /**
+   * <summary>
+   * Finds the first symbol-prefixed notice line in a message block.
+   * </summary>
+   * <param name="value">Text to inspect.</param>
+   * <returns>Original text plus an optional extracted notice.</returns>
+   */
   private extractPopupNotice(value: string): { cleaned: string; notice: string } {
     if (!value) {
       return { cleaned: value, notice: '' };
@@ -386,6 +456,12 @@ export class AppComponent {
     };
   }
 
+  /**
+   * <summary>
+   * Shows a warning popup only once for the current flow.
+   * </summary>
+   * <param name="message">Warning message to display.</param>
+   */
   private showStatusPopupOnce(message: string): void {
     if (!message || this.hasShownStatusPopup) {
       return;
@@ -395,10 +471,21 @@ export class AppComponent {
     this.showWarningToast(message);
   }
 
+  /**
+   * <summary>
+   * Hides the warning toast.
+   * </summary>
+   */
   dismissWarningToast() {
     this.warningToast.set(null);
   }
 
+  /**
+   * <summary>
+   * Displays a warning toast with automatic timeout cleanup.
+   * </summary>
+   * <param name="message">Toast text to display.</param>
+   */
   private showWarningToast(message: string) {
     this.warningToast.set(message);
 
@@ -412,6 +499,13 @@ export class AppComponent {
     }, 5000);
   }
 
+  /**
+   * <summary>
+   * Detects transport or server failures from HTTP errors.
+   * </summary>
+   * <param name="error">Candidate error value from request handlers.</param>
+   * <returns>True when the backend appears unavailable.</returns>
+   */
   private isBackendDownError(error: unknown): boolean {
     if (!(error instanceof HttpErrorResponse)) {
       return false;
@@ -420,6 +514,12 @@ export class AppComponent {
     return error.status === 0 || error.status >= 500;
   }
 
+  /**
+   * <summary>
+   * Loads sessions from local storage and rehydrates date fields.
+   * </summary>
+   * <returns>Stored sessions or a default starter session.</returns>
+   */
   private loadSessionsFromStorage(): ChatSession[] {
     try {
       const stored = localStorage.getItem(AppComponent.STORAGE_KEY);
@@ -449,6 +549,12 @@ export class AppComponent {
     ];
   }
 
+  /**
+   * <summary>
+   * Persists current sessions to local storage.
+   * </summary>
+   * <param name="sessions">Session list to persist.</param>
+   */
   private saveSessionsToStorage(sessions: ChatSession[]): void {
     try {
       localStorage.setItem(AppComponent.STORAGE_KEY, JSON.stringify(sessions));
@@ -457,6 +563,12 @@ export class AppComponent {
     }
   }
 
+  /**
+   * <summary>
+   * Generates a unique message identifier.
+   * </summary>
+   * <returns>Combined timestamp and random suffix identifier.</returns>
+   */
   private generateId(): string {
     return `${Date.now().toString()}${Math.random().toString(36).substring(2, 5)}`;
   }
