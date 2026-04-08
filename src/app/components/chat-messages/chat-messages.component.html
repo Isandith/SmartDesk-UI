@@ -1,0 +1,74 @@
+<div class="messages-list" #chatContainer>
+  @if (messages.length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      </div>
+      <h3>Start a new conversation</h3>
+      <p>Ask questions about billing, shipping, or general support. I'll do my best to assist you!</p>
+    </div>
+  }
+
+  @for (msg of messages; track msg.id) {
+    <div class="message-row" [class.justify-end]="msg.sender === 'user'">
+      @if (msg.sender === 'assistant') {
+        <div class="assistant-avatar" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="10" rx="2" />
+            <circle cx="12" cy="5" r="2" />
+            <path d="M12 7v4" />
+            <line x1="8" y1="16" x2="8" y2="16" />
+            <line x1="16" y1="16" x2="16" y2="16" />
+          </svg>
+        </div>
+      }
+
+      <div
+        class="message-bubble"
+        [class.user-bubble]="msg.sender === 'user'"
+        [class.assistant-bubble]="msg.sender === 'assistant'"
+      >
+        <p>{{ msg.text }}</p>
+
+        @if (msg.metadata?.priority_escalation) {
+          <div class="escalation-banner">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            High Priority: Escalated to Human Agent
+          </div>
+        }
+
+        <div class="message-meta" [class.user-meta]="msg.sender === 'user'" [class.assistant-meta]="msg.sender === 'assistant'">
+          @if (msg.sender === 'user') {
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          }
+          {{ msg.timestamp | date:'shortTime' }}
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (isLoading) {
+    <div class="message-row">
+      <div class="assistant-avatar" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="10" rx="2" />
+          <circle cx="12" cy="5" r="2" />
+          <path d="M12 7v4" />
+        </svg>
+      </div>
+      <div class="typing-bubble" aria-label="Assistant is typing">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </div>
+    </div>
+  }
+</div>

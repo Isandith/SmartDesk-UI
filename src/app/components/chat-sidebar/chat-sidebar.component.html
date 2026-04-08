@@ -1,0 +1,53 @@
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="brand-row">
+      <div class="brand-mark" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 8V4H8" />
+          <rect width="16" height="12" x="4" y="8" rx="2" />
+          <path d="M2 14h2" />
+          <path d="M20 14h2" />
+          <path d="M15 13v2" />
+          <path d="M9 13v2" />
+        </svg>
+      </div>
+      <div>
+        <h1>SmartDesk AI</h1>
+        <p>Assistant</p>
+      </div>
+    </div>
+
+    <button type="button" class="new-chat-button" (click)="createSession.emit()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M5 12h14" />
+        <path d="M12 5v14" />
+      </svg>
+      <span>New Chat</span>
+    </button>
+  </div>
+
+  <div class="sessions-list">
+    <div class="sessions-label">Recent Chats</div>
+
+    @for (session of sessions; track session.id) {
+      <button
+        type="button"
+        (click)="sessionSelected.emit(session.id)"
+        class="session-item"
+        [ngClass]="{
+          'is-active': session.id === activeSessionId,
+          'is-inactive': session.id !== activeSessionId
+        }"
+      >
+        <span class="session-title">{{ session.title }}</span>
+        <span class="session-updated" [class.is-active-time]="session.id === activeSessionId">
+          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          {{ session.updatedAt | date:'MMM d, h:mm a' }}
+        </span>
+      </button>
+    }
+  </div>
+</div>

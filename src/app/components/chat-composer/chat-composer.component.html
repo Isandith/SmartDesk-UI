@@ -1,0 +1,36 @@
+<div class="composer">
+  <div class="composer-row">
+    <div class="input-wrap">
+      <textarea
+        class="chat-input"
+        [formControl]="messageControl"
+        (keydown)="handleKeydown($event)"
+        placeholder="Type your question here..."
+        rows="1"
+        [disabled]="isLoading"
+      ></textarea>
+    </div>
+
+    <button
+      type="button"
+      (click)="sendMessage.emit()"
+      [disabled]="!messageControl.value.trim() || isLoading"
+      class="send-button"
+      aria-label="Send message"
+      title="Send message"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="22" y1="2" x2="11" y2="13" />
+        <polygon points="22 2 15 22 11 13 2 9 22 2" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="composer-footer">
+    <span class="system-status">
+      <span class="status-dot"></span>
+      System Online
+    </span>
+    <span class="session-id" aria-label="Current session id">{{ sessionId }}</span>
+  </div>
+</div>
