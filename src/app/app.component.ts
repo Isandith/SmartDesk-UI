@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormControl } from '@angular/forms';
 import { ChatComposerComponent } from './components/chat-composer/chat-composer.component';
@@ -23,17 +23,11 @@ export class AppComponent {
   private static readonly ContentToken = '[CONTENT]';
   private static readonly BreakToken = '[BREAK]';
   private static readonly PopupSymbols = ['ℹ️', '⚠️', '🚨', '❗', '✅'];
+  private static readonly STORAGE_KEY = 'smartdesk_sessions';
 
   private chatService = inject(ChatService);
 
-  sessions = signal<ChatSession[]>([
-    {
-      id: this.generateSessionId(),
-      title: 'New Chat',
-      messages: [],
-      updatedAt: new Date(),
-    },
-  ]);
+  sessions = signal<ChatSession[]>(this.loadSessionsFromStorage());
 
   activeSessionId = signal<string>(this.sessions()[0].id);
   isLoading = signal<boolean>(false);
@@ -46,6 +40,13 @@ export class AppComponent {
   private warningToastTimer: ReturnType<typeof setTimeout> | null = null;
   private hasShownStatusPopup = false;
   private hasShownManualModeWarning = false;
+
+  constructor() {
+    // Auto-save sessions to localStorage whenever they change
+    effect(() => {
+      this.saveSessionsToStorage(this.sessions());
+    });
+  }
 
   createNewSession() {
     if (this.isLoading()) {
@@ -417,6 +418,43 @@ export class AppComponent {
     }
 
     return error.status === 0 || error.status >= 500;
+  }
+
+  private loadSessionsFromStorage(): ChatSession[] {
+    try {
+      const stored = localStorage.getItem(AppComponent.STORAGE_KEY);
+      if (stored) {
+        const sessions = JSON.parse(stored) as ChatSession[];
+        // Convert date strings back to Date objects
+        sessions.forEach((session) => {
+          session.updatedAt = new Date(session.updatedAt);
+          session.messages.forEach((msg) => {
+            msg.timestamp = new Date(msg.timestamp);
+          });
+        });
+        return sessions;
+      }
+    } catch (error) {
+      console.error('Failed to load sessions from localStorage:', error);
+    }
+
+    // Return default session if nothing is stored
+    return [
+      {
+        id: this.generateSessionId(),
+        title: 'New Chat',
+        messages: [],
+        updatedAt: new Date(),
+      },
+    ];
+  }
+
+  private saveSessionsToStorage(sessions: ChatSession[]): void {
+    try {
+      localStorage.setItem(AppComponent.STORAGE_KEY, JSON.stringify(sessions));
+    } catch (error) {
+      console.error('Failed to save sessions to localStorage:', error);
+    }
   }
 
   private generateId(): string {
