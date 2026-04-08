@@ -5,12 +5,13 @@
       [activeSessionId]="activeSessionId()"
       (sessionSelected)="setActiveSession($event)"
       (createSession)="createNewSession()"
+      (deleteSession)="deleteSession($event)"
     />
 
     <div class="main-panel">
       <app-chat-header
         [title]="activeSession().title"
-        (deleteChat)="clearCurrentSession()"
+        (resetSessionRequested)="resetCurrentSession()"
       />
 
       <app-chat-messages
@@ -26,4 +27,15 @@
       />
     </div>
   </div>
+
+  @if (warningToast()) {
+    <div class="toast-stack" role="status" aria-live="polite">
+      <div class="warning-toast">
+        <span>{{ warningToast() }}</span>
+        <button type="button" class="toast-dismiss" (click)="dismissWarningToast()" aria-label="Dismiss warning">
+          ×
+        </button>
+      </div>
+    </div>
+  }
 </div>

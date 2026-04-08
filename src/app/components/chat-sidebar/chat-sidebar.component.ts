@@ -14,4 +14,10 @@ export class ChatSidebarComponent {
 
   @Output() sessionSelected = new EventEmitter<string>();
   @Output() createSession = new EventEmitter<void>();
+  @Output() deleteSession = new EventEmitter<string>();
+
+  onDeleteSession(event: MouseEvent, sessionId: string) {
+    event.stopPropagation();
+    this.deleteSession.emit(sessionId);
+  }
 }

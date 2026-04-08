@@ -30,24 +30,40 @@
     <div class="sessions-label">Recent Chats</div>
 
     @for (session of sessions; track session.id) {
-      <button
-        type="button"
-        (click)="sessionSelected.emit(session.id)"
-        class="session-item"
-        [ngClass]="{
-          'is-active': session.id === activeSessionId,
-          'is-inactive': session.id !== activeSessionId
-        }"
-      >
-        <span class="session-title">{{ session.title }}</span>
-        <span class="session-updated" [class.is-active-time]="session.id === activeSessionId">
-          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
+      <div class="session-row">
+        <button
+          type="button"
+          (click)="sessionSelected.emit(session.id)"
+          class="session-item"
+          [ngClass]="{
+            'is-active': session.id === activeSessionId,
+            'is-inactive': session.id !== activeSessionId
+          }"
+        >
+          <span class="session-title">{{ session.title }}</span>
+          <span class="session-updated" [class.is-active-time]="session.id === activeSessionId">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            {{ session.updatedAt | date:'MMM d, h:mm a' }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          class="session-delete-button"
+          (click)="onDeleteSession($event, session.id)"
+          aria-label="Delete chat"
+          title="Delete chat"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 6h18" />
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
           </svg>
-          {{ session.updatedAt | date:'MMM d, h:mm a' }}
-        </span>
-      </button>
+        </button>
+      </div>
     }
   </div>
 </div>

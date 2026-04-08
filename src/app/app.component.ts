@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormControl } from '@angular/forms';
 import { ChatComposerComponent } from './components/chat-composer/chat-composer.component';
 import { ChatHeaderComponent } from './components/chat-header/chat-header.component';
@@ -16,6 +17,12 @@ import { ChatService } from './lib/services/chat.service';
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
+  private static readonly MarkerDelimiter = '!$!@$!$!';
+  private static readonly WarningToken = '[WARNING]';
+  private static readonly PriorityToken = '[PRIORITY]';
+  private static readonly ContentToken = '[CONTENT]';
+  private static readonly BreakToken = '[BREAK]';
+
   private chatService = inject(ChatService);
 
   sessions = signal<ChatSession[]>([
@@ -34,9 +41,19 @@ export class AppComponent {
   messages = computed(() => this.activeSession().messages);
 
   messageControl = new FormControl('', { nonNullable: true });
+  warningToast = signal<string | null>(null);
+  private warningToastTimer: ReturnType<typeof setTimeout> | null = null;
 
   createNewSession() {
     if (this.isLoading()) {
+      return;
+    }
+
+    const existingEmptySession = this.sessions().find((session) => session.messages.length === 0);
+
+    if (existingEmptySession) {
+      this.activeSessionId.set(existingEmptySession.id);
+      this.messageControl.setValue('');
       return;
     }
 
@@ -53,6 +70,13 @@ export class AppComponent {
   }
 
   setActiveSession(sessionId: string) {
+    const currentSessionId = this.activeSessionId();
+    const currentSession = this.sessions().find((session) => session.id === currentSessionId);
+
+    if (currentSession && currentSession.id !== sessionId && currentSession.messages.length === 0) {
+      this.sessions.update((sessions) => sessions.filter((session) => session.id !== currentSession.id));
+    }
+
     this.activeSessionId.set(sessionId);
   }
 
@@ -91,11 +115,15 @@ export class AppComponent {
 
     this.chatService.ask(text, currentSessionId).subscribe({
       next: (responseMetadata) => {
+        const parsed = this.parseResponseAnswer(responseMetadata.answer);
+
         const assistantMessage: ChatMessage = {
           id: this.generateId(),
           sender: 'assistant',
-          text: responseMetadata.answer,
+          text: parsed.content,
           timestamp: new Date(),
+          priorityText: parsed.priority,
+          warningText: parsed.warning,
           metadata: responseMetadata,
         };
 
@@ -113,43 +141,177 @@ export class AppComponent {
         );
         this.isLoading.set(false);
       },
-      error: () => {
+      error: (error: unknown) => {
         this.isLoading.set(false);
+
+        if (this.isBackendDownError(error)) {
+          this.showWarningToast('Support service is temporarily unavailable. Please try again in a moment.');
+          return;
+        }
+
+        this.showWarningToast('Something went wrong while sending your message. Please try again.');
       },
     });
   }
 
-  clearCurrentSession() {
+  resetCurrentSession() {
     if (this.isLoading()) {
       return;
     }
 
     const currentId = this.activeSessionId();
 
-    this.chatService.resetSession(currentId).subscribe(() => {
-      this.sessions.update((sessions) => {
-        const filtered = sessions.filter((session) => session.id !== currentId);
+    this.chatService.resetSession(currentId).subscribe({
+      next: () => {
+        this.sessions.update((sessions) =>
+          sessions.map((session) => {
+            if (session.id === currentId) {
+              return {
+                ...session,
+                title: 'New Chat',
+                messages: [],
+                updatedAt: new Date(),
+              };
+            }
 
-        if (filtered.length === 0) {
-          const newSession: ChatSession = {
-            id: this.generateSessionId(),
-            title: 'New Chat',
-            messages: [],
-            updatedAt: new Date(),
-          };
-          this.activeSessionId.set(newSession.id);
-          return [newSession];
+            return session;
+          }),
+        );
+
+        this.messageControl.setValue('');
+      },
+      error: (error: unknown) => {
+        if (this.isBackendDownError(error)) {
+          this.showWarningToast('Support service is temporarily unavailable. Reset was not synced yet.');
+          return;
         }
 
-        this.activeSessionId.set(filtered[0].id);
-        return filtered;
-      });
-      this.messageControl.setValue('');
+        this.showWarningToast('Could not reset this chat right now. Please try again.');
+      },
     });
+  }
+
+  deleteSession(sessionId: string) {
+    if (this.isLoading()) {
+      return;
+    }
+
+    this.chatService.resetSession(sessionId).subscribe({
+      next: () => {
+        this.removeSessionFromUi(sessionId);
+      },
+      error: (error: unknown) => {
+        if (this.isBackendDownError(error)) {
+          this.showWarningToast('Support service is temporarily unavailable. Chat was removed locally only.');
+        }
+        this.removeSessionFromUi(sessionId);
+      },
+    });
+  }
+
+  private removeSessionFromUi(sessionId: string) {
+    const remainingSessions = this.sessions().filter((session) => session.id !== sessionId);
+
+    if (remainingSessions.length === 0) {
+      const replacementSession: ChatSession = {
+        id: this.generateSessionId(),
+        title: 'New Chat',
+        messages: [],
+        updatedAt: new Date(),
+      };
+
+      this.sessions.set([replacementSession]);
+      this.activeSessionId.set(replacementSession.id);
+      this.messageControl.setValue('');
+      return;
+    }
+
+    this.sessions.set(remainingSessions);
+
+    if (this.activeSessionId() === sessionId) {
+      this.activeSessionId.set(remainingSessions[0].id);
+      this.messageControl.setValue('');
+    }
   }
 
   private generateSessionId(): string {
     return `sess_${Math.random().toString(36).substring(2, 9)}`;
+  }
+
+  private parseResponseAnswer(answer: string): { content: string; priority: string; warning: string } {
+    const normalizeBreaks = (value: string) => value.replaceAll(AppComponent.BreakToken, '\n\n').trim();
+    const normalizedAnswer = answer ?? '';
+
+    if (!normalizedAnswer.includes(AppComponent.MarkerDelimiter)) {
+      return {
+        content: normalizeBreaks(normalizedAnswer),
+        priority: '',
+        warning: '',
+      };
+    }
+
+    const segments = normalizedAnswer
+      .split(AppComponent.MarkerDelimiter)
+      .map((segment) => segment.trim())
+      .filter((segment) => segment.length > 0);
+
+    const contentParts: string[] = [];
+    const priorityParts: string[] = [];
+    const warningParts: string[] = [];
+
+    for (const segment of segments) {
+      if (segment.startsWith(AppComponent.WarningToken)) {
+        warningParts.push(normalizeBreaks(segment.substring(AppComponent.WarningToken.length)));
+        continue;
+      }
+
+      if (segment.startsWith(AppComponent.PriorityToken)) {
+        priorityParts.push(normalizeBreaks(segment.substring(AppComponent.PriorityToken.length)));
+        continue;
+      }
+
+      if (segment.startsWith(AppComponent.ContentToken)) {
+        contentParts.push(normalizeBreaks(segment.substring(AppComponent.ContentToken.length)));
+        continue;
+      }
+
+      contentParts.push(normalizeBreaks(segment));
+    }
+
+    const content = contentParts.filter(Boolean).join('\n\n').trim();
+    const priority = priorityParts.filter(Boolean).join('\n\n').trim();
+    const warning = warningParts.filter(Boolean).join('\n\n').trim();
+
+    return {
+      content,
+      priority,
+      warning,
+    };
+  }
+
+  dismissWarningToast() {
+    this.warningToast.set(null);
+  }
+
+  private showWarningToast(message: string) {
+    this.warningToast.set(message);
+
+    if (this.warningToastTimer !== null) {
+      clearTimeout(this.warningToastTimer);
+    }
+
+    this.warningToastTimer = setTimeout(() => {
+      this.warningToast.set(null);
+      this.warningToastTimer = null;
+    }, 5000);
+  }
+
+  private isBackendDownError(error: unknown): boolean {
+    if (!(error instanceof HttpErrorResponse)) {
+      return false;
+    }
+
+    return error.status === 0 || error.status >= 500;
   }
 
   private generateId(): string {
