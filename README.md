@@ -1,59 +1,115 @@
-# SmartDeskUI
+# SmartDesk AI Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.23.
+SmartDesk AI Frontend is an Angular chat interface for the Smart FAQ technical assessment.
+It connects to the SmartDesk ASP.NET Core backend and provides a clean support-chat experience with sentiment and escalation visibility.
 
-## Development server
+## Tech Stack
 
-To start a local development server, run:
+- Angular 19 (standalone components)
+- TypeScript
+- RxJS
+- Angular HttpClient
+- SCSS
 
-```bash
-ng serve
-```
+## Core Features
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+- Chat interface for user and assistant messages
+- Session-aware conversations with recent chat history
+- Sentiment score display for each assistant response
+- Escalation status display (true or false)
+- Priority support banner when escalation is triggered
+- Reset current session action
+- Multiple local chat sessions with persistence in browser storage
+- Graceful frontend error handling for API failures
 
-## Code scaffolding
+## Frontend Architecture
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+The UI follows a component-based structure with clear separation of concerns:
 
-```bash
-ng generate component component-name
-```
+- app component: state orchestration, API calls, message lifecycle
+- chat sidebar: session list, create session, delete session
+- chat header: active session title and reset action
+- chat messages: message rendering, sentiment chips, escalation status
+- chat composer: user input and send action
+- chat service: backend API integration
+- chat models: typed contracts for request and response payloads
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Project Structure
 
-```bash
-ng generate --help
-```
+- src/app/components: visual UI components
+- src/app/lib/interfaces: typed request and response models
+- src/app/lib/services: API service layer
+- src/environments: environment-specific backend URL configuration
 
-## Building
+## API Contract Used By Frontend
 
-To build the project run:
+Ask endpoint request body:
 
-```bash
-ng build
-```
+- session_id: string (optional)
+- message: string (required)
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Ask endpoint response fields used by UI:
 
-## Running unit tests
+- session_id
+- user_message
+- answer
+- sentiment_score
+- priority_escalation
+- response_source
+- manual_mode
+- context
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Reset endpoint response fields used by UI:
 
-```bash
-ng test
-```
+- session_id
+- cleared
 
-## Running end-to-end tests
+## Prerequisites
 
-For end-to-end (e2e) testing, run:
+- Node.js 18 or newer
+- npm 9 or newer
+- SmartDesk backend running locally
 
-```bash
-ng e2e
-```
+## Setup Instructions
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+1. Install dependencies
+	- npm install
+2. Configure backend URL
+	- Update src/environments/environment.ts if backend host or port is different
+	- Update src/environments/environment.development.ts if needed
+3. Start frontend
+	- npm start
+4. Open in browser
+	- http://localhost:4200
 
-## Additional Resources
+## Available Scripts
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- npm start: run Angular dev server
+- npm run build: create production build
+- npm run watch: build in watch mode
+- npm test: run unit tests
+
+## Behavior Notes
+
+- Frontend expects backend sentiment_score to be in range -1.0 to 1.0
+- Frontend displays escalation based on priority_escalation flag
+- Frontend supports backend fallback/manual mode notices
+- Sessions are saved in localStorage and restored on reload
+
+## Troubleshooting
+
+- If messages fail to send, verify backend is running and CORS allows frontend origin
+- If sentiment or escalation is missing, check backend response payload fields
+- If reset does not clear server session, verify reset endpoint connectivity
+
+## Assessment Mapping
+
+This frontend covers the UI requirements of the task:
+
+- chat interface
+- sentiment display
+- escalation status display
+- reset session control
+- session-oriented chat workflow
+
+Backend-specific requirements (AI strategy, adapter, fallback, validation, sentiment scoring) are handled in the SmartDesk API project.
