@@ -44,6 +44,8 @@ export class AppComponent {
   messageControl = new FormControl('', { nonNullable: true });
   warningToast = signal<string | null>(null);
   private warningToastTimer: ReturnType<typeof setTimeout> | null = null;
+  private hasShownStatusPopup = false;
+  private hasShownManualModeWarning = false;
 
   createNewSession() {
     if (this.isLoading()) {
@@ -55,6 +57,8 @@ export class AppComponent {
     if (existingEmptySession) {
       this.activeSessionId.set(existingEmptySession.id);
       this.messageControl.setValue('');
+      this.hasShownStatusPopup = false;
+      this.hasShownManualModeWarning = false;
       return;
     }
 
@@ -67,6 +71,8 @@ export class AppComponent {
 
     this.sessions.update((sessions) => [newSession, ...sessions]);
     this.activeSessionId.set(newSession.id);
+    this.hasShownStatusPopup = false;
+    this.hasShownManualModeWarning = false;
     this.messageControl.setValue('');
   }
 
@@ -79,6 +85,8 @@ export class AppComponent {
     }
 
     this.activeSessionId.set(sessionId);
+    this.hasShownStatusPopup = false;
+    this.hasShownManualModeWarning = false;
   }
 
   sendMessage() {
@@ -118,13 +126,20 @@ export class AppComponent {
       next: (responseMetadata) => {
         const parsed = this.parseResponseAnswer(responseMetadata.answer);
 
+        const assistantWarning =
+          parsed.warning || (responseMetadata.manual_mode && parsed.removedQuotaNotice && !this.hasShownManualModeWarning ? 'Switched to manual mode.' : '');
+
+        if (assistantWarning === 'Switched to manual mode.') {
+          this.hasShownManualModeWarning = true;
+        }
+
         const assistantMessage: ChatMessage = {
           id: this.generateId(),
           sender: 'assistant',
           text: parsed.content,
           timestamp: new Date(),
           priorityText: parsed.priority,
-          warningText: parsed.warning,
+          warningText: assistantWarning,
           metadata: responseMetadata,
         };
 
@@ -141,9 +156,7 @@ export class AppComponent {
           }),
         );
 
-        if (parsed.popupNotice) {
-          this.showWarningToast(parsed.popupNotice);
-        }
+        this.showStatusPopupOnce(parsed.popupNotice);
 
         this.isLoading.set(false);
       },
@@ -229,6 +242,8 @@ export class AppComponent {
       this.sessions.set([replacementSession]);
       this.activeSessionId.set(replacementSession.id);
       this.messageControl.setValue('');
+      this.hasShownStatusPopup = false;
+      this.hasShownManualModeWarning = false;
       return;
     }
 
@@ -237,6 +252,8 @@ export class AppComponent {
     if (this.activeSessionId() === sessionId) {
       this.activeSessionId.set(remainingSessions[0].id);
       this.messageControl.setValue('');
+      this.hasShownStatusPopup = false;
+      this.hasShownManualModeWarning = false;
     }
   }
 
@@ -244,7 +261,13 @@ export class AppComponent {
     return `sess_${Math.random().toString(36).substring(2, 9)}`;
   }
 
-  private parseResponseAnswer(answer: string): { content: string; priority: string; warning: string; popupNotice: string } {
+  private parseResponseAnswer(answer: string): {
+    content: string;
+    priority: string;
+    warning: string;
+    popupNotice: string;
+    removedQuotaNotice: boolean;
+  } {
     const normalizeBreaks = (value: string) => value.replaceAll(AppComponent.BreakToken, '\n\n').trim();
     const normalizedAnswer = answer ?? '';
 
@@ -254,6 +277,7 @@ export class AppComponent {
         priority: '',
         warning: '',
         popupNotice: '',
+        removedQuotaNotice: false,
       };
     }
 
@@ -289,31 +313,46 @@ export class AppComponent {
     const priority = priorityParts.filter(Boolean).join('\n\n').trim();
     const warning = warningParts.filter(Boolean).join('\n\n').trim();
 
-    const contentNotice = this.extractPopupNotice(content);
-    const warningNotice = this.extractPopupNotice(warning);
+    const contentNotice = this.extractQuotaPopupNotice(content);
+    const warningQuotaNotice = this.extractQuotaPopupNotice(warning);
+    const warningSymbolNotice = this.extractPopupNotice(warningQuotaNotice.cleaned);
+
+    // Strip "Switched to manual mode." from content if already shown once
+    let cleanedContent = contentNotice.cleaned;
+    if (this.hasShownManualModeWarning) {
+      cleanedContent = cleanedContent
+        .split('\n')
+        .filter(line => !line.trim().startsWith('Switched to manual mode.'))
+        .join('\n')
+        .trim();
+    }
 
     return {
-      content: contentNotice.cleaned,
+      content: cleanedContent,
       priority,
-      warning: warningNotice.cleaned,
-      popupNotice: contentNotice.notice || warningNotice.notice,
+      warning: warningQuotaNotice.cleaned,
+      popupNotice: contentNotice.notice || warningQuotaNotice.notice || warningSymbolNotice.notice,
+      removedQuotaNotice: contentNotice.removed || warningQuotaNotice.removed,
     };
   }
 
-  private extractPopupNotice(value: string): { cleaned: string; notice: string } {
+  private extractQuotaPopupNotice(value: string): { cleaned: string; notice: string; removed: boolean } {
     if (!value) {
-      return { cleaned: value, notice: '' };
+      return { cleaned: value, notice: '', removed: false };
     }
 
     const lines = value.split('\n');
     const keptLines: string[] = [];
     let notice = '';
+    let removed = false;
 
     for (const line of lines) {
       const trimmed = line.trim();
       const isSymbolNotice = AppComponent.PopupSymbols.some((symbol) => trimmed.startsWith(symbol));
+      const isQuotaNotice = /gemini|quota|rate\s*limit/i.test(trimmed);
 
-      if (isSymbolNotice) {
+      if (isSymbolNotice && isQuotaNotice) {
+        removed = true;
         if (!notice) {
           notice = trimmed;
         }
@@ -326,7 +365,33 @@ export class AppComponent {
     return {
       cleaned: keptLines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
       notice,
+      removed,
     };
+  }
+
+  private extractPopupNotice(value: string): { cleaned: string; notice: string } {
+    if (!value) {
+      return { cleaned: value, notice: '' };
+    }
+
+    const noticeLine = value
+      .split('\n')
+      .map((line) => line.trim())
+      .find((line) => AppComponent.PopupSymbols.some((symbol) => line.startsWith(symbol)));
+
+    return {
+      cleaned: value,
+      notice: noticeLine ?? '',
+    };
+  }
+
+  private showStatusPopupOnce(message: string): void {
+    if (!message || this.hasShownStatusPopup) {
+      return;
+    }
+
+    this.hasShownStatusPopup = true;
+    this.showWarningToast(message);
   }
 
   dismissWarningToast() {
