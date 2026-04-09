@@ -214,27 +214,42 @@ export class AppComponent {
 
     const currentId = this.activeSessionId();
 
+    this.sessions.update((sessions) =>
+      sessions.map((session) => {
+        if (session.id === currentId) {
+          return {
+            ...session,
+            title: 'New Chat',
+            messages: [],
+            updatedAt: new Date(),
+            manualModeNoticeShown: false,
+          };
+        }
+
+        return session;
+      }),
+    );
+
+    this.messageControl.setValue('');
+
     this.chatService.resetSession(currentId).subscribe({
       next: (response) => {
         const resolvedSessionId = this.reconcileSessionId(currentId, response.session_id);
 
         this.sessions.update((sessions) =>
-          sessions.map((session) => {
-            if (session.id === resolvedSessionId) {
-              return {
-                ...session,
-                title: 'New Chat',
-                messages: [],
-                updatedAt: new Date(),
-                manualModeNoticeShown: false,
-              };
-            }
-
-            return session;
-          }),
+          sessions.map((session) =>
+            session.id === resolvedSessionId
+              ? {
+                  ...session,
+                  title: 'New Chat',
+                  messages: [],
+                  updatedAt: new Date(),
+                  manualModeNoticeShown: false,
+                }
+              : session,
+          ),
         );
 
-        this.messageControl.setValue('');
       },
       error: (error: unknown) => {
         if (this.isBackendDownError(error)) {
