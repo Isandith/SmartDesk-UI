@@ -1,20 +1,35 @@
 <div class="sidebar">
   <div class="sidebar-header">
-    <div class="brand-row">
-      <div class="brand-mark" aria-hidden="true">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 8V4H8" />
-          <rect width="16" height="12" x="4" y="8" rx="2" />
-          <path d="M2 14h2" />
-          <path d="M20 14h2" />
-          <path d="M15 13v2" />
-          <path d="M9 13v2" />
+    <div class="sidebar-top-row">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 8V4H8" />
+            <rect width="16" height="12" x="4" y="8" rx="2" />
+            <path d="M2 14h2" />
+            <path d="M20 14h2" />
+            <path d="M15 13v2" />
+            <path d="M9 13v2" />
+          </svg>
+        </div>
+        <div>
+          <h1>SmartDesk AI</h1>
+          <p>Assistant</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="sidebar-close-button"
+        aria-label="Close chat list"
+        title="Close chat list"
+        (click)="closeRequested.emit()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
-      </div>
-      <div>
-        <h1>SmartDesk AI</h1>
-        <p>Assistant</p>
-      </div>
+      </button>
     </div>
 
     <button type="button" class="new-chat-button" (click)="createSession.emit()">

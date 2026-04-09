@@ -20,6 +20,7 @@ export class ChatSidebarComponent {
   @Output() sessionSelected = new EventEmitter<string>();
   @Output() createSession = new EventEmitter<void>();
   @Output() deleteSession = new EventEmitter<string>();
+  @Output() closeRequested = new EventEmitter<void>();
 
   /**
    * <summary>

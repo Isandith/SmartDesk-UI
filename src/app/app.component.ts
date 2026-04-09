@@ -30,6 +30,7 @@ export class AppComponent {
 
   activeSessionId = signal<string>(this.sessions()[0].id);
   isLoading = signal<boolean>(false);
+  isSidebarOpen = signal<boolean>(false);
 
   activeSession = computed(() => this.sessions().find((session) => session.id === this.activeSessionId()) || this.sessions()[0]);
   messages = computed(() => this.activeSession().messages);
@@ -76,6 +77,7 @@ export class AppComponent {
 
       this.activeSessionId.set(existingEmptySession.id);
       this.messageControl.setValue('');
+      this.closeSidebar();
       return;
     }
 
@@ -90,6 +92,7 @@ export class AppComponent {
     this.sessions.update((sessions) => [newSession, ...sessions]);
     this.activeSessionId.set(newSession.id);
     this.messageControl.setValue('');
+    this.closeSidebar();
   }
 
   /**
@@ -107,6 +110,25 @@ export class AppComponent {
     }
 
     this.activeSessionId.set(sessionId);
+    this.closeSidebar();
+  }
+
+  /**
+   * <summary>
+   * Toggles the mobile session sidebar drawer.
+   * </summary>
+   */
+  toggleSidebar() {
+    this.isSidebarOpen.update((isOpen) => !isOpen);
+  }
+
+  /**
+   * <summary>
+   * Closes the mobile session sidebar drawer.
+   * </summary>
+   */
+  closeSidebar() {
+    this.isSidebarOpen.set(false);
   }
 
   /**
@@ -274,6 +296,7 @@ export class AppComponent {
     }
 
     this.removeSessionFromUi(sessionId);
+    this.closeSidebar();
 
     this.chatService.resetSession(sessionId).subscribe({
       next: () => {},

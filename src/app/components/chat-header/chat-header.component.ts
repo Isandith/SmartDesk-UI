@@ -13,5 +13,6 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 export class ChatHeaderComponent {
   @Input() title = '';
 
+  @Output() menuRequested = new EventEmitter<void>();
   @Output() resetSessionRequested = new EventEmitter<void>();
 }

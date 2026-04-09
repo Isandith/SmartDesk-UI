@@ -1,16 +1,19 @@
 <div class="chat-app">
   <div class="chat-shell">
     <app-chat-sidebar
+      [class.mobile-open]="isSidebarOpen()"
       [sessions]="sessions()"
       [activeSessionId]="activeSessionId()"
       (sessionSelected)="setActiveSession($event)"
       (createSession)="createNewSession()"
       (deleteSession)="deleteSession($event)"
+      (closeRequested)="closeSidebar()"
     />
 
     <div class="main-panel">
       <app-chat-header
         [title]="activeSession().title"
+        (menuRequested)="toggleSidebar()"
         (resetSessionRequested)="resetCurrentSession()"
       />
 
@@ -26,6 +29,14 @@
         (sendMessage)="sendMessage()"
       />
     </div>
+
+    <button
+      type="button"
+      class="mobile-sidebar-backdrop"
+      [class.is-visible]="isSidebarOpen()"
+      aria-label="Close chat list"
+      (click)="closeSidebar()"
+    ></button>
   </div>
 
   @if (warningToast()) {
