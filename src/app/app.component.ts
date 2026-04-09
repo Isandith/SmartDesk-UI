@@ -253,15 +253,17 @@ export class AppComponent {
       return;
     }
 
+    this.removeSessionFromUi(sessionId);
+
     this.chatService.resetSession(sessionId).subscribe({
-      next: () => {
-        this.removeSessionFromUi(sessionId);
-      },
+      next: () => {},
       error: (error: unknown) => {
         if (this.isBackendDownError(error)) {
           this.showWarningToast('Support service is temporarily unavailable. Chat was removed locally only.');
+          return;
         }
-        this.removeSessionFromUi(sessionId);
+
+        this.showWarningToast('Chat was removed locally, but backend cleanup failed.');
       },
     });
   }
