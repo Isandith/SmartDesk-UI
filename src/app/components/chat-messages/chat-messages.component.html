@@ -52,12 +52,6 @@
               </div>
             }
 
-            @if (hasContext(msg)) {
-              <div class="context-chip">
-                <span>Context: {{ msg.metadata!.context.length }}</span>
-              </div>
-            }
-
             @if (hasSystemStatusMessage(msg)) {
               <div class="system-status-message">
                 <span>{{ msg.metadata!.system_status_message }}</span>

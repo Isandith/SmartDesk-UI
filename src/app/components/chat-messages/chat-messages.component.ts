@@ -85,17 +85,6 @@ export class ChatMessagesComponent implements AfterViewChecked {
 
   /**
    * <summary>
-   * Indicates whether context information is present for a response.
-   * </summary>
-   * <param name="message">Message being inspected.</param>
-   * <returns>True when backend context items are available.</returns>
-   */
-  hasContext(message: ChatMessage): boolean {
-    return message.sender === 'assistant' && Array.isArray(message.metadata?.context) && message.metadata.context.length > 0;
-  }
-
-  /**
-   * <summary>
    * Converts the priority escalation flag to a user-facing label.
    * </summary>
    * <param name="message">Message being inspected.</param>
