@@ -8,6 +8,7 @@ export interface ChatSession {
   title: string;
   messages: ChatMessage[];
   updatedAt: Date;
+  manualModeNoticeShown?: boolean;
 }
 
 /**
@@ -42,6 +43,7 @@ export interface ChatResponseMetadata {
   answer: string;
   sentiment_score: number;
   priority_escalation: boolean;
+  system_status_message?: string;
   response_source: string;
   manual_mode?: boolean;
   context: ChatApiMessage[];
@@ -67,7 +69,5 @@ export interface ChatMessage {
   sender: 'user' | 'assistant';
   text: string;
   timestamp: Date;
-  priorityText?: string;
-  warningText?: string;
   metadata?: ChatResponseMetadata;
 }

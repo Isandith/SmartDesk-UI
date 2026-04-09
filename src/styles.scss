@@ -75,14 +75,17 @@ app-root {
 
 .toast-stack {
   position: fixed;
-  left: 50%;
-  top: 1rem;
-  transform: translateX(-50%);
+  inset: 0;
   z-index: 1000;
-  width: min(92vw, 26rem);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1rem;
+  pointer-events: none;
 }
 
 .warning-toast {
+  pointer-events: auto;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -96,6 +99,7 @@ app-root {
   font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.4;
+  width: min(92vw, 26rem);
 }
 
 .toast-dismiss {
@@ -520,42 +524,6 @@ app-root {
   white-space: pre-wrap;
 }
 
-.priority-block {
-  margin-top: 0.68rem;
-  padding-left: 0.7rem;
-  border-left: 2px solid rgba(47, 79, 127, 0.16);
-}
-
-.priority-title,
-.priority-line {
-  margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.58;
-  color: inherit;
-}
-
-.priority-title {
-  font-weight: 700;
-}
-
-.priority-line {
-  margin-top: 0.12rem;
-}
-
-.warning-banner {
-  margin-top: 0.68rem;
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.58rem;
-  border-radius: 0.48rem;
-  border: 1px solid rgba(23, 62, 110, 0.24);
-  background: rgba(23, 62, 110, 0.08);
-  color: #2f4f7f;
-  font-size: 0.74rem;
-  font-weight: 700;
-}
-
 .sentiment-chip {
   margin-top: 0.68rem;
   display: inline-flex;
@@ -582,6 +550,8 @@ app-root {
 }
 
 .status-chip,
+.mode-chip,
+.context-chip,
 .source-chip {
   display: inline-flex;
   align-items: center;
@@ -595,10 +565,41 @@ app-root {
   letter-spacing: 0.01em;
 }
 
+.status-chip.is-escalated {
+  border-color: rgba(180, 71, 99, 0.22);
+  background: rgba(180, 71, 99, 0.08);
+  color: #a73d59;
+}
+
+.mode-chip {
+  border-color: rgba(23, 62, 110, 0.2);
+  background: rgba(23, 62, 110, 0.08);
+  color: #2f4f7f;
+}
+
+.context-chip {
+  border-color: rgba(65, 103, 156, 0.2);
+  background: rgba(65, 103, 156, 0.08);
+  color: #466b9f;
+}
+
 .source-chip {
   border-color: rgba(23, 62, 110, 0.2);
   background: rgba(23, 62, 110, 0.07);
   color: #2f4f7f;
+}
+
+.system-status-message {
+  width: 100%;
+  margin-top: 0.7rem;
+  padding: 0.68rem 0.76rem;
+  border-radius: 0.72rem;
+  border: 1px solid rgba(23, 62, 110, 0.16);
+  background: rgba(23, 62, 110, 0.06);
+  color: #2f4f7f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
 }
 
 .sentiment-dot {

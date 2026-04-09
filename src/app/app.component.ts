@@ -22,12 +22,6 @@ import { ChatService } from './lib/services/chat.service';
  * </summary>
  */
 export class AppComponent {
-  private static readonly MarkerDelimiter = '!$!@$!$!';
-  private static readonly WarningToken = '[WARNING]';
-  private static readonly PriorityToken = '[PRIORITY]';
-  private static readonly ContentToken = '[CONTENT]';
-  private static readonly BreakToken = '[BREAK]';
-  private static readonly PopupSymbols = ['ℹ️', '⚠️', '🚨', '❗', '✅'];
   private static readonly STORAGE_KEY = 'smartdesk_sessions';
 
   private chatService = inject(ChatService);
@@ -43,8 +37,6 @@ export class AppComponent {
   messageControl = new FormControl('', { nonNullable: true });
   warningToast = signal<string | null>(null);
   private warningToastTimer: ReturnType<typeof setTimeout> | null = null;
-  private hasShownStatusPopup = false;
-  private hasShownManualModeWarning = false;
 
   /**
    * <summary>
@@ -71,10 +63,19 @@ export class AppComponent {
     const existingEmptySession = this.sessions().find((session) => session.messages.length === 0);
 
     if (existingEmptySession) {
+      this.sessions.update((sessions) =>
+        sessions.map((session) =>
+          session.id === existingEmptySession.id
+            ? {
+                ...session,
+                manualModeNoticeShown: false,
+              }
+            : session,
+        ),
+      );
+
       this.activeSessionId.set(existingEmptySession.id);
       this.messageControl.setValue('');
-      this.hasShownStatusPopup = false;
-      this.hasShownManualModeWarning = false;
       return;
     }
 
@@ -83,12 +84,11 @@ export class AppComponent {
       title: 'New Chat',
       messages: [],
       updatedAt: new Date(),
+      manualModeNoticeShown: false,
     };
 
     this.sessions.update((sessions) => [newSession, ...sessions]);
     this.activeSessionId.set(newSession.id);
-    this.hasShownStatusPopup = false;
-    this.hasShownManualModeWarning = false;
     this.messageControl.setValue('');
   }
 
@@ -107,8 +107,6 @@ export class AppComponent {
     }
 
     this.activeSessionId.set(sessionId);
-    this.hasShownStatusPopup = false;
-    this.hasShownManualModeWarning = false;
   }
 
   /**
@@ -151,39 +149,43 @@ export class AppComponent {
 
     this.chatService.ask(text, currentSessionId).subscribe({
       next: (responseMetadata) => {
-        const parsed = this.parseResponseAnswer(responseMetadata.answer);
+        const resolvedSessionId = this.reconcileSessionId(currentSessionId, responseMetadata.session_id);
+        const session = this.sessions().find((item) => item.id === resolvedSessionId);
+        const manualModeMessage = responseMetadata.system_status_message?.trim() || 'Switched to manual mode.';
+        const shouldShowManualModeNotice =
+          responseMetadata.manual_mode === true &&
+          !session?.manualModeNoticeShown;
 
-        const assistantWarning =
-          parsed.warning || (responseMetadata.manual_mode && parsed.removedQuotaNotice && !this.hasShownManualModeWarning ? 'Switched to manual mode.' : '');
-
-        if (assistantWarning === 'Switched to manual mode.') {
-          this.hasShownManualModeWarning = true;
+        if (shouldShowManualModeNotice) {
+          this.showWarningToast(manualModeMessage);
         }
+
+        const assistantMetadata = {
+          ...responseMetadata,
+          system_status_message: responseMetadata.manual_mode === true ? undefined : responseMetadata.system_status_message,
+        };
 
         const assistantMessage: ChatMessage = {
           id: this.generateId(),
           sender: 'assistant',
-          text: parsed.content,
+          text: responseMetadata.answer?.trim() ?? '',
           timestamp: new Date(),
-          priorityText: parsed.priority,
-          warningText: assistantWarning,
-          metadata: responseMetadata,
+          metadata: assistantMetadata,
         };
 
         this.sessions.update((sessions) =>
           sessions.map((session) => {
-            if (session.id === currentSessionId) {
+            if (session.id === resolvedSessionId) {
               return {
                 ...session,
                 messages: [...session.messages, assistantMessage],
                 updatedAt: new Date(),
+                manualModeNoticeShown: session.manualModeNoticeShown || shouldShowManualModeNotice,
               };
             }
             return session;
           }),
         );
-
-        this.showStatusPopupOnce(parsed.popupNotice);
 
         this.isLoading.set(false);
       },
@@ -213,15 +215,18 @@ export class AppComponent {
     const currentId = this.activeSessionId();
 
     this.chatService.resetSession(currentId).subscribe({
-      next: () => {
+      next: (response) => {
+        const resolvedSessionId = this.reconcileSessionId(currentId, response.session_id);
+
         this.sessions.update((sessions) =>
           sessions.map((session) => {
-            if (session.id === currentId) {
+            if (session.id === resolvedSessionId) {
               return {
                 ...session,
                 title: 'New Chat',
                 messages: [],
                 updatedAt: new Date(),
+                manualModeNoticeShown: false,
               };
             }
 
@@ -283,13 +288,12 @@ export class AppComponent {
         title: 'New Chat',
         messages: [],
         updatedAt: new Date(),
+        manualModeNoticeShown: false,
       };
 
       this.sessions.set([replacementSession]);
       this.activeSessionId.set(replacementSession.id);
       this.messageControl.setValue('');
-      this.hasShownStatusPopup = false;
-      this.hasShownManualModeWarning = false;
       return;
     }
 
@@ -298,9 +302,40 @@ export class AppComponent {
     if (this.activeSessionId() === sessionId) {
       this.activeSessionId.set(remainingSessions[0].id);
       this.messageControl.setValue('');
-      this.hasShownStatusPopup = false;
-      this.hasShownManualModeWarning = false;
     }
+  }
+
+  /**
+   * <summary>
+   * Reconciles the local session id with the id returned by the backend.
+   * </summary>
+   * <param name="previousSessionId">Client-side session identifier before the response.</param>
+   * <param name="nextSessionId">Session identifier returned by the backend.</param>
+   * <returns>The resolved session identifier used in local state.</returns>
+   */
+  private reconcileSessionId(previousSessionId: string, nextSessionId?: string): string {
+    const resolvedSessionId = nextSessionId?.trim() || previousSessionId;
+
+    if (resolvedSessionId === previousSessionId) {
+      return resolvedSessionId;
+    }
+
+    this.sessions.update((sessions) =>
+      sessions.map((session) =>
+        session.id === previousSessionId
+          ? {
+              ...session,
+              id: resolvedSessionId,
+            }
+          : session,
+      ),
+    );
+
+    if (this.activeSessionId() === previousSessionId) {
+      this.activeSessionId.set(resolvedSessionId);
+    }
+
+    return resolvedSessionId;
   }
 
   /**
@@ -311,166 +346,6 @@ export class AppComponent {
    */
   private generateSessionId(): string {
     return `sess_${Math.random().toString(36).substring(2, 9)}`;
-  }
-
-  /**
-   * <summary>
-   * Parses a backend answer payload into content, warning, priority, and popup fields.
-   * </summary>
-   * <param name="answer">Raw backend answer string.</param>
-   * <returns>Parsed message segments and quota-notice metadata.</returns>
-   */
-  private parseResponseAnswer(answer: string): {
-    content: string;
-    priority: string;
-    warning: string;
-    popupNotice: string;
-    removedQuotaNotice: boolean;
-  } {
-    const normalizeBreaks = (value: string) => value.replaceAll(AppComponent.BreakToken, '\n\n').trim();
-    const normalizedAnswer = answer ?? '';
-
-    if (!normalizedAnswer.includes(AppComponent.MarkerDelimiter)) {
-      return {
-        content: normalizeBreaks(normalizedAnswer),
-        priority: '',
-        warning: '',
-        popupNotice: '',
-        removedQuotaNotice: false,
-      };
-    }
-
-    const segments = normalizedAnswer
-      .split(AppComponent.MarkerDelimiter)
-      .map((segment) => segment.trim())
-      .filter((segment) => segment.length > 0);
-
-    const contentParts: string[] = [];
-    const priorityParts: string[] = [];
-    const warningParts: string[] = [];
-
-    for (const segment of segments) {
-      if (segment.startsWith(AppComponent.WarningToken)) {
-        warningParts.push(normalizeBreaks(segment.substring(AppComponent.WarningToken.length)));
-        continue;
-      }
-
-      if (segment.startsWith(AppComponent.PriorityToken)) {
-        priorityParts.push(normalizeBreaks(segment.substring(AppComponent.PriorityToken.length)));
-        continue;
-      }
-
-      if (segment.startsWith(AppComponent.ContentToken)) {
-        contentParts.push(normalizeBreaks(segment.substring(AppComponent.ContentToken.length)));
-        continue;
-      }
-
-      contentParts.push(normalizeBreaks(segment));
-    }
-
-    const content = contentParts.filter(Boolean).join('\n\n').trim();
-    const priority = priorityParts.filter(Boolean).join('\n\n').trim();
-    const warning = warningParts.filter(Boolean).join('\n\n').trim();
-
-    const contentNotice = this.extractQuotaPopupNotice(content);
-    const warningQuotaNotice = this.extractQuotaPopupNotice(warning);
-    const warningSymbolNotice = this.extractPopupNotice(warningQuotaNotice.cleaned);
-
-    // Strip "Switched to manual mode." from content if already shown once
-    let cleanedContent = contentNotice.cleaned;
-    if (this.hasShownManualModeWarning) {
-      cleanedContent = cleanedContent
-        .split('\n')
-        .filter(line => !line.trim().startsWith('Switched to manual mode.'))
-        .join('\n')
-        .trim();
-    }
-
-    return {
-      content: cleanedContent,
-      priority,
-      warning: warningQuotaNotice.cleaned,
-      popupNotice: contentNotice.notice || warningQuotaNotice.notice || warningSymbolNotice.notice,
-      removedQuotaNotice: contentNotice.removed || warningQuotaNotice.removed,
-    };
-  }
-
-  /**
-   * <summary>
-   * Extracts symbol-based quota notices and returns cleaned text.
-   * </summary>
-   * <param name="value">Text to inspect.</param>
-   * <returns>Cleaned text, extracted notice, and removal flag.</returns>
-   */
-  private extractQuotaPopupNotice(value: string): { cleaned: string; notice: string; removed: boolean } {
-    if (!value) {
-      return { cleaned: value, notice: '', removed: false };
-    }
-
-    const lines = value.split('\n');
-    const keptLines: string[] = [];
-    let notice = '';
-    let removed = false;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      const isSymbolNotice = AppComponent.PopupSymbols.some((symbol) => trimmed.startsWith(symbol));
-      const isQuotaNotice = /gemini|quota|rate\s*limit/i.test(trimmed);
-
-      if (isSymbolNotice && isQuotaNotice) {
-        removed = true;
-        if (!notice) {
-          notice = trimmed;
-        }
-        continue;
-      }
-
-      keptLines.push(line);
-    }
-
-    return {
-      cleaned: keptLines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
-      notice,
-      removed,
-    };
-  }
-
-  /**
-   * <summary>
-   * Finds the first symbol-prefixed notice line in a message block.
-   * </summary>
-   * <param name="value">Text to inspect.</param>
-   * <returns>Original text plus an optional extracted notice.</returns>
-   */
-  private extractPopupNotice(value: string): { cleaned: string; notice: string } {
-    if (!value) {
-      return { cleaned: value, notice: '' };
-    }
-
-    const noticeLine = value
-      .split('\n')
-      .map((line) => line.trim())
-      .find((line) => AppComponent.PopupSymbols.some((symbol) => line.startsWith(symbol)));
-
-    return {
-      cleaned: value,
-      notice: noticeLine ?? '',
-    };
-  }
-
-  /**
-   * <summary>
-   * Shows a warning popup only once for the current flow.
-   * </summary>
-   * <param name="message">Warning message to display.</param>
-   */
-  private showStatusPopupOnce(message: string): void {
-    if (!message || this.hasShownStatusPopup) {
-      return;
-    }
-
-    this.hasShownStatusPopup = true;
-    this.showWarningToast(message);
   }
 
   /**

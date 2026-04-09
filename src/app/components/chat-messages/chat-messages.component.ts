@@ -14,8 +14,6 @@ import { ChatMessage } from '../../lib/interfaces/chat.models';
  * </summary>
  */
 export class ChatMessagesComponent implements AfterViewChecked {
-  private static readonly defaultPriorityMessage = "Priority Support: We're sorry you're facing this issue. A human support specialist is now reviewing your case.";
-
   @Input() messages: ChatMessage[] = [];
   @Input() isLoading = false;
 
@@ -43,17 +41,6 @@ export class ChatMessagesComponent implements AfterViewChecked {
 
   /**
    * <summary>
-   * Indicates whether assistant metadata is available for a message.
-   * </summary>
-   * <param name="message">Message being inspected.</param>
-   * <returns>True when metadata exists on an assistant response.</returns>
-   */
-  hasAssistantMetadata(message: ChatMessage): boolean {
-    return message.sender === 'assistant' && !!message.metadata;
-  }
-
-  /**
-   * <summary>
    * Indicates whether a response source label is present.
    * </summary>
    * <param name="message">Message being inspected.</param>
@@ -76,58 +63,46 @@ export class ChatMessagesComponent implements AfterViewChecked {
 
   /**
    * <summary>
-   * Converts the priority escalation flag to a string representation.
+   * Indicates whether a manual mode status chip should be shown.
    * </summary>
    * <param name="message">Message being inspected.</param>
-   * <returns>True or false as a string.</returns>
+   * <returns>True when the backend reports manual mode.</returns>
    */
-  getEscalationStatus(message: ChatMessage): string {
-    return message.metadata?.priority_escalation ? 'true' : 'false';
+  hasManualMode(message: ChatMessage): boolean {
+    return message.sender === 'assistant' && message.metadata?.manual_mode === true;
   }
 
   /**
    * <summary>
-   * Resolves the headline line for priority notices.
+   * Indicates whether a system status message should be shown.
    * </summary>
    * <param name="message">Message being inspected.</param>
-   * <returns>Priority heading text.</returns>
+   * <returns>True when the backend returns a status message.</returns>
    */
-  getPriorityHeading(message: ChatMessage): string {
-    const lines = this.getPriorityLines(message);
-    return lines[0] ?? 'Priority Support';
+  hasSystemStatusMessage(message: ChatMessage): boolean {
+    return message.sender === 'assistant' && typeof message.metadata?.system_status_message === 'string' && message.metadata.system_status_message.trim().length > 0;
   }
 
   /**
    * <summary>
-   * Resolves the body lines for priority notices.
+   * Indicates whether context information is present for a response.
    * </summary>
    * <param name="message">Message being inspected.</param>
-   * <returns>Priority detail lines without the heading.</returns>
+   * <returns>True when backend context items are available.</returns>
    */
-  getPriorityDetails(message: ChatMessage): string[] {
-    const lines = this.getPriorityLines(message);
-    return lines.slice(1);
+  hasContext(message: ChatMessage): boolean {
+    return message.sender === 'assistant' && Array.isArray(message.metadata?.context) && message.metadata.context.length > 0;
   }
 
   /**
    * <summary>
-   * Parses and normalizes priority message content into display lines.
+   * Converts the priority escalation flag to a user-facing label.
    * </summary>
    * <param name="message">Message being inspected.</param>
-   * <returns>Array of non-empty lines, defaulting to a fallback heading.</returns>
+   * <returns>Escalated or standard.</returns>
    */
-  private getPriorityLines(message: ChatMessage): string[] {
-    const rawMessage = (message.priorityText || ChatMessagesComponent.defaultPriorityMessage).replace(/^[\u26A0\u2757\u2139\u2705\uD83D\uDEA8\s]+/, '').trim();
-    const lines = rawMessage
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    if (lines.length === 0) {
-      return ['Priority Support'];
-    }
-
-    return lines;
+  getEscalationLabel(message: ChatMessage): string {
+    return message.metadata?.priority_escalation ? 'Escalated' : 'Standard';
   }
 
   /**

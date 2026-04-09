@@ -30,31 +30,11 @@
         [class.user-bubble]="msg.sender === 'user'"
         [class.assistant-bubble]="msg.sender === 'assistant'"
       >
-        @if (msg.sender === 'assistant' && (msg.priorityText || msg.metadata?.priority_escalation)) {
-          <div class="priority-block">
-            <p class="priority-title">{{ getPriorityHeading(msg) }}</p>
-            @for (line of getPriorityDetails(msg); track $index) {
-              <p class="priority-line">{{ line }}</p>
-            }
-          </div>
-        }
-
-        @if (msg.sender === 'assistant' && msg.warningText) {
-          <div class="warning-banner">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            {{ msg.warningText }}
-          </div>
-        }
-
         @if (msg.text) {
           <p>{{ msg.text }}</p>
         }
 
-        @if (hasAssistantMetadata(msg)) {
+        @if (msg.sender === 'assistant' && msg.metadata) {
           <div class="assistant-metadata">
             @if (hasSentiment(msg)) {
               <div class="sentiment-chip" [ngClass]="getSentimentClass(msg.metadata!.sentiment_score)">
@@ -62,9 +42,27 @@
               </div>
             }
 
-            <div class="status-chip">
-              <span>Escalation: {{ getEscalationStatus(msg) }}</span>
+            <div class="status-chip" [class.is-escalated]="msg.metadata.priority_escalation">
+              <span>Escalation: {{ getEscalationLabel(msg) }}</span>
             </div>
+
+            @if (hasManualMode(msg)) {
+              <div class="mode-chip">
+                <span>Manual mode</span>
+              </div>
+            }
+
+            @if (hasContext(msg)) {
+              <div class="context-chip">
+                <span>Context: {{ msg.metadata!.context.length }}</span>
+              </div>
+            }
+
+            @if (hasSystemStatusMessage(msg)) {
+              <div class="system-status-message">
+                <span>{{ msg.metadata!.system_status_message }}</span>
+              </div>
+            }
 
             @if (hasResponseSource(msg)) {
               <div class="source-chip">
